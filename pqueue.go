@@ -18,25 +18,32 @@ var (
 	}
 )
 
-// TODO: Interfacification
+// TODO: Interfacification of messages
+
+// Message represents a message in the priority queue
 type Message struct {
 	key      int64
 	value    []byte
 	priority int
 }
 
+// NewMessage generates a new priority queue message with a priority range of
+// 1-5
 func NewMessage(priority int, value string) *Message {
 	return &Message{getKey(), []byte(value), priority}
 }
 
+// ToString outputs the string representation of the message's value
 func (m *Message) ToString() string {
 	return string(m.value)
 }
 
+// PQueue is a priority queue backed by a Bolt database on disk
 type PQueue struct {
 	conn *bolt.DB
 }
 
+// NewPQueue loads or creates a new PQueue with the given filename
 func NewPQueue(filename string) (*PQueue, error) {
 	db, err := bolt.Open(filename, 0600, nil)
 	if err != nil {
@@ -61,6 +68,7 @@ func NewPQueue(filename string) (*PQueue, error) {
 	return &PQueue{db}, nil
 }
 
+// Enqueue adds a message to the queue at its appropriate priority level
 func (b *PQueue) Enqueue(m *Message) error {
 	if _, ok := levelName[m.priority]; !ok {
 		return errors.New("invalid priority")
@@ -83,6 +91,8 @@ func (b *PQueue) Enqueue(m *Message) error {
 	})
 }
 
+// Dequeue removes the oldest, highest priority message from the queue and
+// returns it
 func (b *PQueue) Dequeue() (*Message, error) {
 	var m *Message
 	err := b.conn.Update(func(tx *bolt.Tx) error {
@@ -115,6 +125,7 @@ func (b *PQueue) Dequeue() (*Message, error) {
 	return m, nil
 }
 
+// Size returns the number of entries of a given priority from 1 to 5
 func (b *PQueue) Size(priority int) (int, error) {
 	if _, ok := levelName[priority]; !ok {
 		return 0, errors.New("invalid priority")
