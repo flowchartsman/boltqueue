@@ -3,6 +3,7 @@ A persistent queue based on boltdb
 --
     import "github.com/alaska/boltqueue"
 
+Note: at the moment, the only queue is a priority queue. Adding the regular one shortly
 
 ## Usage
 
