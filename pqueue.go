@@ -149,7 +149,7 @@ func (b *PQueue) Size(priority int) (int, error) {
 
 var lastTime int64
 
-// Inspired by DavidHui/httpq/boltqueue
+// inspired by https://gist.github.com/burke/5833358
 func getKey() int64 {
 	t := time.Now().UnixNano()
 	if t <= lastTime {
