@@ -147,6 +147,14 @@ func (b *PQueue) Size(priority int) (int, error) {
 	return size, nil
 }
 
+func (b *PQueue) Close() error {
+	err := b.conn.Close()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 var lastTime int64
 
 // inspired by https://gist.github.com/burke/5833358
