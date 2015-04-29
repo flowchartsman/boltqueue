@@ -11,60 +11,57 @@ import (
 // TODO: Interfacification of messages
 
 // Message represents a message in the priority queue
-type Message struct {
+type UMessage struct {
 	priority []byte
 	key      []byte
 	value    []byte
 }
 
 var foundItem = errors.New("item found")
-var lastTime int64 //keep track of the last UnixNano in case there's somehow a dup
+var UlastTime int64 //keep track of the last UnixNano in case there's somehow a dup
 
 // NewMessage generates a new priority queue message with a priority range of
 // 0-255
-func NewMessage(priority int, value string) *Message {
+func NewUMessage(priority int, value string) (*UMessage, error) {
 	if priority < 0 || priority > 255 {
-		priority = 255
+		return nil, errors.New("Invalid priority")
 	}
 	p := make([]byte, 1)
 	p[0] = byte(priority)
 	t := time.Now().UnixNano()
-	if t <= lastTime {
-		t = lastTime + 1
+	if t <= UlastTime {
+		t = UlastTime + 1
 	}
 	lastTime = t
 	k := make([]byte, 8)
 	binary.BigEndian.PutUint64(k, uint64(t))
-	return &Message{p, k, []byte(value)}
+	return &UMessage{p, k, []byte(value)}, nil
 }
 
 // ToString outputs the string representation of the message's value
-func (m *Message) ToString() string {
+func (m *UMessage) ToString() string {
 	return string(m.value)
 }
 
 // PQueue is a priority queue backed by a Bolt database on disk
-type PQueue struct {
+type UPQueue struct {
 	conn *bolt.DB
 }
 
 // NewPQueue loads or creates a new PQueue with the given filename
-func NewPQueue(filename string) (*PQueue, error) {
+func NewUPQueue(filename string) (*UPQueue, error) {
 	db, err := bolt.Open(filename, 0600, nil)
 	if err != nil {
 		return nil, err
 	}
-	return &PQueue{db}, nil
+	return &UPQueue{db}, nil
 }
 
 // Enqueue adds a message to the queue
-func (b *PQueue) Enqueue(m *Message) error {
+func (b *UPQueue) Enqueue(m *UMessage) error {
 	return b.conn.Update(func(tx *bolt.Tx) error {
 		// Get bucket for this priority level
 		pb, err := tx.CreateBucketIfNotExists(m.priority)
-		if err != nil {
-			return err
-		}
 		// Add the message
 		err = pb.Put(m.key, m.value)
 		if err != nil {
@@ -76,8 +73,8 @@ func (b *PQueue) Enqueue(m *Message) error {
 
 // Dequeue removes the oldest, highest priority message from the queue and
 // returns it
-func (b *PQueue) Dequeue() (*Message, error) {
-	var m *Message
+func (b *UPQueue) Dequeue() (*UMessage, error) {
+	var m *UMessage
 	err := b.conn.Update(func(tx *bolt.Tx) error {
 		err := tx.ForEach(func(bname []byte, bucket *bolt.Bucket) error {
 			if bucket.Stats().KeyN == 0 { //empty bucket
@@ -85,7 +82,7 @@ func (b *PQueue) Dequeue() (*Message, error) {
 			}
 			cur := bucket.Cursor()
 			k, v := cur.First() //Should not be empty by definition
-			m = &Message{cloneBytes(bname), cloneBytes(k), cloneBytes(v)}
+			m = &UMessage{cloneBytes(bname), cloneBytes(k), cloneBytes(v)}
 
 			// Remove message
 			if err := cur.Delete(); err != nil {
@@ -105,7 +102,7 @@ func (b *PQueue) Dequeue() (*Message, error) {
 }
 
 // Size returns the number of entries of a given priority from 1 to 5
-func (b *PQueue) Size(priority int) (int, error) {
+func (b *UPQueue) Size(priority int) (int, error) {
 	if priority < 0 || priority > 255 {
 		return 0, errors.New("Invalid priority")
 	}
@@ -122,7 +119,7 @@ func (b *PQueue) Size(priority int) (int, error) {
 	return count, nil
 }
 
-func (b *PQueue) Close() error {
+func (b *UPQueue) Close() error {
 	err := b.conn.Close()
 	if err != nil {
 		return err
@@ -131,8 +128,8 @@ func (b *PQueue) Close() error {
 }
 
 // taken from boltDB. Avoids corruption when re-queueing
-func cloneBytes(v []byte) []byte {
-	var clone = make([]byte, len(v))
-	copy(clone, v)
-	return clone
-}
+//func cloneBytes(v []byte) []byte {
+//	var clone = make([]byte, len(v))
+//	copy(clone, v)
+//	return clone
+//}
