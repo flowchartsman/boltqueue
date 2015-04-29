@@ -8,29 +8,34 @@ import (
 	"github.com/boltdb/bolt"
 )
 
-var (
-	levelName = map[int][]byte{
-		1: []byte("1"),
-		2: []byte("2"),
-		3: []byte("3"),
-		4: []byte("4"),
-		5: []byte("5"),
-	}
-)
-
 // TODO: Interfacification of messages
 
 // Message represents a message in the priority queue
 type Message struct {
-	key      int64
+	priority []byte
+	key      []byte
 	value    []byte
-	priority int
 }
 
+var foundItem = errors.New("item found")
+var UlastTime int64 //keep track of the last UnixNano in case there's somehow a dup
+
 // NewMessage generates a new priority queue message with a priority range of
-// 1-5
-func NewMessage(priority int, value string) *Message {
-	return &Message{getKey(), []byte(value), priority}
+// 0-255
+func NewMessage(priority int, value string) (*Message, error) {
+	if priority < 0 || priority > 255 {
+		return nil, errors.New("Invalid priority")
+	}
+	p := make([]byte, 1)
+	p[0] = byte(priority)
+	t := time.Now().UnixNano()
+	if t <= UlastTime {
+		t = UlastTime + 1
+	}
+	lastTime = t
+	k := make([]byte, 8)
+	binary.BigEndian.PutUint64(k, uint64(t))
+	return &Message{p, k, []byte(value)}, nil
 }
 
 // ToString outputs the string representation of the message's value
@@ -49,44 +54,19 @@ func NewPQueue(filename string) (*PQueue, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	// Ensure the priority buckets exist before using the queue
-	err = db.Update(func(tx *bolt.Tx) error {
-		for i := 1; i <= 5; i++ {
-			_, err = tx.CreateBucketIfNotExists(levelName[int(i)])
-			if err != nil {
-				return err
-			}
-		}
-		return nil
-	})
-
-	if err != nil {
-		return nil, err
-	}
-
 	return &PQueue{db}, nil
 }
 
-// Enqueue adds a message to the queue at its appropriate priority level
+// Enqueue adds a message to the queue
 func (b *PQueue) Enqueue(m *Message) error {
-	if _, ok := levelName[m.priority]; !ok {
-		return errors.New("invalid priority")
-	}
-
 	return b.conn.Update(func(tx *bolt.Tx) error {
-		dbucket := tx.Bucket(levelName[m.priority])
-		if dbucket == nil {
-			return errors.New("data bucket does not exist")
-		}
-
-		// Push
-		kb := make([]byte, 8)
-		binary.BigEndian.PutUint64(kb, uint64(m.key))
-		if err := dbucket.Put(kb, m.value); err != nil {
+		// Get bucket for this priority level
+		pb, err := tx.CreateBucketIfNotExists(m.priority)
+		// Add the message
+		err = pb.Put(m.key, m.value)
+		if err != nil {
 			return err
 		}
-
 		return nil
 	})
 }
@@ -96,55 +76,47 @@ func (b *PQueue) Enqueue(m *Message) error {
 func (b *PQueue) Dequeue() (*Message, error) {
 	var m *Message
 	err := b.conn.Update(func(tx *bolt.Tx) error {
-
-		for i := 1; i <= 5; i++ {
-			dbucket := tx.Bucket(levelName[int(i)])
-			if dbucket == nil {
-				return errors.New("data bucket does not exist")
+		err := tx.ForEach(func(bname []byte, bucket *bolt.Bucket) error {
+			if bucket.Stats().KeyN == 0 { //empty bucket
+				return nil
 			}
-			// Skip empty queues
-			if dbucket.Stats().KeyN == 0 {
-				continue
-			}
-			cur := dbucket.Cursor()
-			k, v := cur.First()
-			ki, _ := binary.Varint(k)
+			cur := bucket.Cursor()
+			k, v := cur.First() //Should not be empty by definition
+			m = &Message{cloneBytes(bname), cloneBytes(k), cloneBytes(v)}
 
-			m = &Message{ki, cloneBytes(v), i}
+			// Remove message
 			if err := cur.Delete(); err != nil {
 				return err
 			}
-			break
+			return foundItem //to stop the iteration
+		})
+		if err != nil && err != foundItem {
+			return err
 		}
 		return nil
 	})
 	if err != nil {
 		return nil, err
 	}
-
 	return m, nil
 }
 
 // Size returns the number of entries of a given priority from 1 to 5
 func (b *PQueue) Size(priority int) (int, error) {
-	if _, ok := levelName[priority]; !ok {
-		return 0, errors.New("invalid priority")
+	if priority < 0 || priority > 255 {
+		return 0, errors.New("Invalid priority")
 	}
-
-	var size int
-	err := b.conn.View(func(tx *bolt.Tx) error {
-		dbucket := tx.Bucket(levelName[priority])
-		if dbucket == nil {
-			return errors.New("data bucket does not exist")
-		}
-		size = dbucket.Stats().KeyN
-		return nil
-	})
+	tx, err := b.conn.Begin(false)
 	if err != nil {
 		return 0, err
 	}
-
-	return size, nil
+	bucket := tx.Bucket([]byte{byte(uint8(priority))})
+	if bucket == nil {
+		return 0, nil
+	}
+	count := bucket.Stats().KeyN
+	tx.Rollback()
+	return count, nil
 }
 
 func (b *PQueue) Close() error {
@@ -153,18 +125,6 @@ func (b *PQueue) Close() error {
 		return err
 	}
 	return nil
-}
-
-var lastTime int64
-
-// inspired by https://gist.github.com/burke/5833358
-func getKey() int64 {
-	t := time.Now().UnixNano()
-	if t <= lastTime {
-		t = lastTime + 1
-	}
-	lastTime = t
-	return t
 }
 
 // taken from boltDB. Avoids corruption when re-queueing
