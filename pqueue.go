@@ -122,6 +122,7 @@ func (b *PQueue) Size(priority int) (int, error) {
 	return count, nil
 }
 
+// Close closes the queue and releases all resources
 func (b *PQueue) Close() error {
 	err := b.conn.Close()
 	if err != nil {

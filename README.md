@@ -21,7 +21,7 @@ Message represents a message in the priority queue
 ```go
 func NewMessage(priority int, value string) *Message
 ```
-NewMessage generates a new priority queue message with a priority range of 1-5
+NewMessage generates a new priority queue message with a priority range of 0-255
 
 #### func (*Message) ToString
 
@@ -46,6 +46,13 @@ func NewPQueue(filename string) (*PQueue, error)
 ```
 NewPQueue loads or creates a new PQueue with the given filename
 
+#### func (*PQueue) Close
+
+```go
+func (b *PQueue) Close() error
+```
+Close closes the queue and releases all resources
+
 #### func (*PQueue) Dequeue
 
 ```go
@@ -59,7 +66,7 @@ it
 ```go
 func (b *PQueue) Enqueue(m *Message) error
 ```
-Enqueue adds a message to the queue at its appropriate priority level
+Enqueue adds a message to the queue
 
 #### func (*PQueue) Size
 
