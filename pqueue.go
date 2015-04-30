@@ -4,8 +4,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"sync"
-	"time"
 
 	"github.com/boltdb/bolt"
 )
@@ -21,22 +19,7 @@ type Message struct {
 
 var foundItem = errors.New("item found")
 
-type atomicKey struct {
-	sync.Mutex
-	key int64
-}
-
-func (a *atomicKey) Get() uint64 {
-	a.Lock()
-	defer a.Unlock()
-	t := time.Now().UnixNano()
-	if t <= a.key {
-		t = a.key + 1
-	}
-	a.key = t
-	return uint64(t)
-}
-
+// aKey singleton for assigning keys to messages
 var aKey = new(atomicKey)
 
 // NewMessage generates a new priority queue message with a priority range of
