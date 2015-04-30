@@ -67,6 +67,9 @@ func TestDequeue(t *testing.T) {
 			if mStr != mStrComp {
 				t.Errorf("Expected message: \"%s\" got: \"%s\"", mStrComp, mStr)
 			}
+			if m.Priority != p {
+				t.Errorf("Expected priority: %d, got: %d", p, m.Priority)
+			}
 		}
 	}
 	for p := 1; p <= 5; p++ {

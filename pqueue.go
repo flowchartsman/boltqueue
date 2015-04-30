@@ -12,7 +12,7 @@ import (
 
 // Message represents a message in the priority queue
 type Message struct {
-	priority []byte
+	Priority int
 	key      []byte
 	value    []byte
 }
@@ -26,8 +26,6 @@ func NewMessage(priority int, value string) *Message {
 	if priority < 0 || priority > 255 {
 		priority = 255
 	}
-	p := make([]byte, 1)
-	p[0] = byte(priority)
 	t := time.Now().UnixNano()
 	if t <= lastTime {
 		t = lastTime + 1
@@ -35,7 +33,7 @@ func NewMessage(priority int, value string) *Message {
 	lastTime = t
 	k := make([]byte, 8)
 	binary.BigEndian.PutUint64(k, uint64(t))
-	return &Message{p, k, []byte(value)}
+	return &Message{priority, k, []byte(value)}
 }
 
 // ToString outputs the string representation of the message's value
@@ -59,9 +57,14 @@ func NewPQueue(filename string) (*PQueue, error) {
 
 // Enqueue adds a message to the queue
 func (b *PQueue) Enqueue(m *Message) error {
+	if m.Priority < 0 || m.Priority > 255 {
+		return fmt.Errorf("Invalid priority %d on Enqueue()", m.Priority)
+	}
+	p := make([]byte, 1)
+	p[0] = byte(uint8(m.Priority))
 	return b.conn.Update(func(tx *bolt.Tx) error {
 		// Get bucket for this priority level
-		pb, err := tx.CreateBucketIfNotExists(m.priority)
+		pb, err := tx.CreateBucketIfNotExists(p)
 		if err != nil {
 			return err
 		}
@@ -85,7 +88,8 @@ func (b *PQueue) Dequeue() (*Message, error) {
 			}
 			cur := bucket.Cursor()
 			k, v := cur.First() //Should not be empty by definition
-			m = &Message{cloneBytes(bname), cloneBytes(k), cloneBytes(v)}
+			priority, _ := binary.Uvarint(bname)
+			m = &Message{int(priority), cloneBytes(k), cloneBytes(v)}
 
 			// Remove message
 			if err := cur.Delete(); err != nil {
@@ -107,7 +111,7 @@ func (b *PQueue) Dequeue() (*Message, error) {
 // Size returns the number of entries of a given priority from 1 to 5
 func (b *PQueue) Size(priority int) (int, error) {
 	if priority < 0 || priority > 255 {
-		return 0, errors.New("Invalid priority")
+		return o, fmt.Errorf("Invalid priority %d for Size()", m.Priority)
 	}
 	tx, err := b.conn.Begin(false)
 	if err != nil {
