@@ -11,6 +11,7 @@ Note: at the moment, the only queue is a priority queue. Adding the regular one 
 
 ```go
 type Message struct {
+	Priority int // Message priority in the range of 0-255
 }
 ```
 

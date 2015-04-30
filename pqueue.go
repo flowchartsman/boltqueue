@@ -12,7 +12,7 @@ import (
 
 // Message represents a message in the priority queue
 type Message struct {
-	Priority int
+	Priority int // Message priority in the range of 0-255
 	key      []byte
 	value    []byte
 }
