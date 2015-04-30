@@ -2,7 +2,9 @@ package boltqueue
 
 import (
 	"fmt"
+	"math/rand"
 	"os"
+	"sync"
 	"testing"
 	"time"
 )
@@ -121,6 +123,73 @@ func TestRequeue(t *testing.T) {
 		t.Errorf("Expected: \"%s\", got: \"%s\"", "test message 1", mp1.ToString())
 	}
 
+}
+
+func TestGoroutines(t *testing.T) {
+	queueFile := fmt.Sprintf("%d_test.db", time.Now().UnixNano())
+	testPQueue, err := NewPQueue(queueFile)
+	if err != nil {
+		t.Error(err)
+	}
+	defer testPQueue.Close()
+	defer os.Remove(queueFile)
+
+	var wg sync.WaitGroup
+
+	for g := 1; g <= 5; g++ {
+		wg.Add(1)
+		go func() {
+			rand.Seed(time.Now().Unix())
+			time.Sleep(time.Duration(rand.Intn(20)) * time.Millisecond)
+			for p := 1; p <= 5; p++ {
+				for n := 1; n <= 2; n++ {
+					err := testPQueue.Enqueue(NewMessage(p, fmt.Sprintf("test message %d", p)))
+					if err != nil {
+						t.Fatal(err)
+					}
+				}
+			}
+			wg.Done()
+		}()
+	}
+
+	wg.Wait()
+
+	for p := 1; p <= 5; p++ {
+		s, err := testPQueue.Size(p)
+		if err != nil {
+			t.Error(err)
+		}
+		if s != 10 {
+			t.Errorf("Expected queue size 10 for priority %d. Got: %d", p, s)
+		}
+	}
+
+	for p := 1; p <= 5; p++ {
+		for n := 1; n <= 10; n++ {
+			mStrComp := fmt.Sprintf("test message %d", p)
+			m, err := testPQueue.Dequeue()
+			if err != nil {
+				t.Error("Error dequeueing:", err)
+			}
+			mStr := m.ToString()
+			if mStr != mStrComp {
+				t.Errorf("Expected message: \"%s\" got: \"%s\"", mStrComp, mStr)
+			}
+			if m.Priority != p {
+				t.Errorf("Expected priority: %d, got: %d", p, m.Priority)
+			}
+		}
+	}
+	for p := 1; p <= 5; p++ {
+		s, err := testPQueue.Size(p)
+		if err != nil {
+			t.Error(err)
+		}
+		if s != 0 {
+			t.Errorf("Expected queue size 0 for priority %d. Got: %d", p, s)
+		}
+	}
 }
 
 func BenchmarkPQueue(b *testing.B) {
