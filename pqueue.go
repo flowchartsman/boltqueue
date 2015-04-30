@@ -3,6 +3,7 @@ package boltqueue
 import (
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/boltdb/bolt"
@@ -111,7 +112,7 @@ func (b *PQueue) Dequeue() (*Message, error) {
 // Size returns the number of entries of a given priority from 1 to 5
 func (b *PQueue) Size(priority int) (int, error) {
 	if priority < 0 || priority > 255 {
-		return o, fmt.Errorf("Invalid priority %d for Size()", m.Priority)
+		return 0, fmt.Errorf("Invalid priority %d for Size()", priority)
 	}
 	tx, err := b.conn.Begin(false)
 	if err != nil {
