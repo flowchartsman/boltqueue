@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/boltdb/bolt"
 )
@@ -18,6 +19,7 @@ type Message struct {
 }
 
 var foundItem = errors.New("item found")
+var lastTime int64 //keep track of the last UnixNano in case there's somehow a dup
 
 // NewMessage generates a new priority queue message with a priority range of
 // 0-255
@@ -25,7 +27,14 @@ func NewMessage(priority int, value string) *Message {
 	if priority < 0 || priority > 255 {
 		priority = 255
 	}
-	return &Message{Priority: priority, value: []byte(value)}
+	t := time.Now().UnixNano()
+	if t <= lastTime {
+		t = lastTime + 1
+	}
+	lastTime = t
+	k := make([]byte, 8)
+	binary.BigEndian.PutUint64(k, uint64(t))
+	return &Message{priority, k, []byte(value)}
 }
 
 // ToString outputs the string representation of the message's value
@@ -61,18 +70,7 @@ func (b *PQueue) Enqueue(m *Message) error {
 			return err
 		}
 		// Add the message
-		var key []byte
-		if m.key == nil {
-			key = make([]byte, 8)
-			nextKey, err := pb.NextSequence()
-			if err != nil {
-				return err
-			}
-			binary.BigEndian.PutUint64(key, nextKey)
-		} else {
-			key = m.key
-		}
-		err = pb.Put(key, m.value)
+		err = pb.Put(m.key, m.value)
 		if err != nil {
 			return err
 		}
