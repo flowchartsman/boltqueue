@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/boltdb/bolt"
@@ -19,7 +20,24 @@ type Message struct {
 }
 
 var foundItem = errors.New("item found")
-var lastTime int64 //keep track of the last UnixNano in case there's somehow a dup
+
+type atomicKey struct {
+	sync.Mutex
+	key int64
+}
+
+func (a *atomicKey) Get() uint64 {
+	a.Lock()
+	defer a.Unlock()
+	t := time.Now().UnixNano()
+	if t <= a.key {
+		t = a.key + 1
+	}
+	a.key = t
+	return uint64(t)
+}
+
+var aKey = new(atomicKey)
 
 // NewMessage generates a new priority queue message with a priority range of
 // 0-255
@@ -27,13 +45,8 @@ func NewMessage(priority int, value string) *Message {
 	if priority < 0 || priority > 255 {
 		priority = 255
 	}
-	t := time.Now().UnixNano()
-	if t <= lastTime {
-		t = lastTime + 1
-	}
-	lastTime = t
 	k := make([]byte, 8)
-	binary.BigEndian.PutUint64(k, uint64(t))
+	binary.BigEndian.PutUint64(k, aKey.Get())
 	return &Message{priority, k, []byte(value)}
 }
 
