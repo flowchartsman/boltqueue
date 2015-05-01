@@ -7,8 +7,7 @@ type Message struct {
 	priority int
 }
 
-// NewMessage generates a new priority queue message with a priority range of
-// 0-255
+// NewMessage generates a new priority queue message
 func NewMessage(value string) *Message {
 	return &Message{nil, []byte(value), -1}
 }
