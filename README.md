@@ -1,5 +1,4 @@
 # boltqueue[![GoDoc](https://godoc.org/github.com/alaska/boltqueue?status.svg)](https://godoc.org/github.com/alaska/boltqueue)
-
 --
     import "github.com/alaska/boltqueue"
 
@@ -11,8 +10,8 @@ Package boltqueue provides a persistent queue or priority queue based on boltdb
 
 boltqueue's PQueue type represents a priority queue. Messages may be inserted
 into the queue at a numeric priority between 0(highest) and 255(lowest).
-Messages are dequeued following priority order first, then time ordering, with
-the newest messages of the highest priority emerging first.
+Messages are dequeued following priority order, then time ordering, with the
+oldest messages of the highest priority emerging first.
 
 ## Usage
 
@@ -30,7 +29,7 @@ Message represents a message in the priority queue
 ```go
 func NewMessage(value string) *Message
 ```
-NewMessage generates a new priority queue message with a priority range of 0-255
+NewMessage generates a new priority queue message
 
 #### func (*Message) Priority
 
