@@ -1,9 +1,18 @@
 # boltqueue [![GoDoc](https://godoc.org/github.com/alaska/boltqueue?status.svg)](https://godoc.org/github.com/alaska/boltqueue)
-A persistent queue based on boltdb
+# boltqueue
 --
     import "github.com/alaska/boltqueue"
 
-Note: at the moment, the only queue is a priority queue. Adding the regular one shortly
+Package boltqueue provides a persistent queue or priority queue based on boltdb
+(https://github.com/boltdb/bolt)
+
+
+### Priority Queue
+
+boltqueue's PQueue type represents a priority queue. Messages may be inserted
+into the queue at a numeric priority between 0(highest) and 255(lowest).
+Messages are dequeued following priority order first, then time ordering, with
+the newest messages of the highest priority emerging first.
 
 ## Usage
 
