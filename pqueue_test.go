@@ -21,7 +21,7 @@ func TestEnqueue(t *testing.T) {
 	// Enqueue 50 messages
 	for p := 1; p <= 5; p++ {
 		for n := 1; n <= 10; n++ {
-			err := testPQueue.Enqueue(NewMessage(p, fmt.Sprintf("test message %d-%d", p, n)))
+			err := testPQueue.Enqueue(p, NewMessage(fmt.Sprintf("test message %d-%d", p, n)))
 			if err != nil {
 				t.Error(err)
 			}
@@ -51,7 +51,7 @@ func TestDequeue(t *testing.T) {
 	//Put them in in reverse priority order
 	for p := 5; p >= 1; p-- {
 		for n := 1; n <= 10; n++ {
-			err := testPQueue.Enqueue(NewMessage(p, fmt.Sprintf("test message %d-%d", p, n)))
+			err := testPQueue.Enqueue(p, NewMessage(fmt.Sprintf("test message %d-%d", p, n)))
 			if err != nil {
 				t.Error(err)
 			}
@@ -69,8 +69,8 @@ func TestDequeue(t *testing.T) {
 			if mStr != mStrComp {
 				t.Errorf("Expected message: \"%s\" got: \"%s\"", mStrComp, mStr)
 			}
-			if m.Priority != p {
-				t.Errorf("Expected priority: %d, got: %d", p, m.Priority)
+			if m.Priority() != p {
+				t.Errorf("Expected priority: %d, got: %d", p, m.Priority())
 			}
 		}
 	}
@@ -95,7 +95,7 @@ func TestRequeue(t *testing.T) {
 	defer os.Remove(queueFile)
 
 	for p := 1; p <= 5; p++ {
-		err := testPQueue.Enqueue(NewMessage(p, fmt.Sprintf("test message %d", p)))
+		err := testPQueue.Enqueue(p, NewMessage(fmt.Sprintf("test message %d", p)))
 		if err != nil {
 			t.Error(err)
 		}
@@ -107,8 +107,8 @@ func TestRequeue(t *testing.T) {
 	//Remove the priority 2 message
 	_, _ = testPQueue.Dequeue()
 
-	//Re-enqueue the priority 1 message
-	err = testPQueue.Enqueue(mp1)
+	//Re-enqueue the message at priority 1
+	err = testPQueue.Requeue(1, mp1)
 	if err != nil {
 		t.Error(err)
 	}
@@ -143,7 +143,7 @@ func TestGoroutines(t *testing.T) {
 			time.Sleep(time.Duration(rand.Intn(20)) * time.Millisecond)
 			for p := 1; p <= 5; p++ {
 				for n := 1; n <= 2; n++ {
-					err := testPQueue.Enqueue(NewMessage(p, fmt.Sprintf("test message %d", p)))
+					err := testPQueue.Enqueue(p, NewMessage(fmt.Sprintf("test message %d", p)))
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -176,8 +176,8 @@ func TestGoroutines(t *testing.T) {
 			if mStr != mStrComp {
 				t.Errorf("Expected message: \"%s\" got: \"%s\"", mStrComp, mStr)
 			}
-			if m.Priority != p {
-				t.Errorf("Expected priority: %d, got: %d", p, m.Priority)
+			if m.Priority() != p {
+				t.Errorf("Expected priority: %d, got: %d", p, m.Priority())
 			}
 		}
 	}
@@ -199,8 +199,8 @@ func BenchmarkPQueue(b *testing.B) {
 		b.Error(err)
 	}
 	for n := 0; n < b.N; n++ {
-		for p := 1; p <= 6; p++ {
-			queue.Enqueue(NewMessage(p, fmt.Sprintf("test message %d-%d", p, n)))
+		for p := 1; p <= 5; p++ {
+			queue.Enqueue(p, NewMessage(fmt.Sprintf("test message %d-%d", p, n)))
 		}
 	}
 

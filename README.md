@@ -11,7 +11,6 @@ Note: at the moment, the only queue is a priority queue. Adding the regular one 
 
 ```go
 type Message struct {
-	Priority int // Message priority in the range of 0-255
 }
 ```
 
@@ -20,9 +19,17 @@ Message represents a message in the priority queue
 #### func  NewMessage
 
 ```go
-func NewMessage(priority int, value string) *Message
+func NewMessage(value string) *Message
 ```
 NewMessage generates a new priority queue message with a priority range of 0-255
+
+#### func (*Message) Priority
+
+```go
+func (m *Message) Priority() int
+```
+Priority returns the priority the message had in the queue in the range of 0-255
+or -1 if the message is new.
 
 #### func (*Message) ToString
 
@@ -65,9 +72,18 @@ it
 #### func (*PQueue) Enqueue
 
 ```go
-func (b *PQueue) Enqueue(m *Message) error
+func (b *PQueue) Enqueue(priority int, message *Message) error
 ```
 Enqueue adds a message to the queue
+
+#### func (*PQueue) Requeue
+
+```go
+func (b *PQueue) Requeue(priority int, message *Message) error
+```
+Requeue adds a message back into the queue, keeping its precedence. If added at
+the same priority, it should be among the first to dequeue. If added at a
+different priority, it will dequeue before newer messages of that priority.
 
 #### func (*PQueue) Size
 
