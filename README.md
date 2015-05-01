@@ -1,5 +1,5 @@
-# boltqueue [![GoDoc](https://godoc.org/github.com/alaska/boltqueue?status.svg)](https://godoc.org/github.com/alaska/boltqueue)
-# boltqueue
+# boltqueue[![GoDoc](https://godoc.org/github.com/alaska/boltqueue?status.svg)](https://godoc.org/github.com/alaska/boltqueue)
+
 --
     import "github.com/alaska/boltqueue"
 
