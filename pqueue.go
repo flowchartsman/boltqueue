@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/boltdb/bolt"
 )
@@ -20,9 +21,50 @@ type PQueue struct {
 	conn *bolt.DB
 }
 
+// Options represents the options that can be set when opening a database.
+type Options struct {
+	// Timeout is the amount of time to wait to obtain a file lock.
+	// When set to zero it will wait indefinitely. This option is only
+	// available on Darwin and Linux.
+	Timeout time.Duration
+
+	// Sets the DB.NoGrowSync flag before memory mapping the file.
+	NoGrowSync bool
+
+	// Open database in read-only mode. Uses flock(..., LOCK_SH |LOCK_NB) to
+	// grab a shared lock (UNIX).
+	ReadOnly bool
+
+	// Sets the DB.MmapFlags flag before memory mapping the file.
+	MmapFlags int
+
+	// InitialMmapSize is the initial mmap size of the database
+	// in bytes. Read transactions won't block write transaction
+	// if the InitialMmapSize is large enough to hold database mmap
+	// size. (See DB.Begin for more information)
+	//
+	// If <=0, the initial map size is 0.
+	// If initialMmapSize is smaller than the previous database size,
+	// it takes no effect.
+	InitialMmapSize int
+}
+
 // NewPQueue loads or creates a new PQueue with the given filename
-func NewPQueue(filename string) (*PQueue, error) {
-	db, err := bolt.Open(filename, 0600, nil)
+func NewPQueue(filename string, options *Options) (*PQueue, error) {
+	// Options below represent the default options used if nil options are passed into NewPQueue().
+	// No timeout is used which will cause Bolt to wait indefinitely for a lock.
+	var boltOptions *bolt.Options = &bolt.Options{
+		Timeout:    0,
+		NoGrowSync: false,
+	}
+	if options != nil {
+		boltOptions.Timeout = options.Timeout
+		boltOptions.NoGrowSync = options.NoGrowSync
+		boltOptions.ReadOnly = options.ReadOnly
+		boltOptions.MmapFlags = options.MmapFlags
+		boltOptions.InitialMmapSize = options.InitialMmapSize
+	}
+	db, err := bolt.Open(filename, 0600, boltOptions)
 	if err != nil {
 		return nil, err
 	}
