@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/boltdb/bolt"
+	"github.com/McSwitch/bolt"
 )
 
 // TODO: Interfacification of messages
