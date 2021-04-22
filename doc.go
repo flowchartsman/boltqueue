@@ -4,7 +4,7 @@
 
 /*
 Package boltqueue provides a persistent queue or priority queue based on
-boltdb (https://github.com/boltdb/bolt)
+boltdb (https://github.com/McSwitch/bolt)
 
 Priority Queue
 
